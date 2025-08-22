@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>تطبيق العدّاد التنازلي الشخصي</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // أيقونات بسيطة بـ SVG
+        const PlusIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        );
+
+        const XIcon = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        );
+
+        const CalendarIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+        );
+
+        const TimerIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12,6 12,12 16,14"></polyline>
+            </svg>
+        );
+
+        const SimpleCountdownApp = () => {
+            const [countdowns, setCountdowns] = useState([
+                {
+                    id: 1,
+                    title: "عيد ميلادي 🎂",
+                    date: "2025-12-15",
+                    time: "00:00",
+                    color: "bg-pink-500"
+                },
+                {
+                    id: 2,
+                    title: "الاختبارات النهائية 📚",
+                    date: "2025-11-20",
+                    time: "08:00",
+                    color: "bg-blue-500"
+                },
+                {
+                    id: 3,
+                    title: "بداية الإجازة ✈️",
+                    date: "2025-12-25",
+                    time: "12:00",
+                    color: "bg-green-500"
+                },
+                {
+                    id: 4,
+                    title: "موعد مع الأصدقاء 👥",
+                    date: "2025-09-30",
+                    time: "18:00",
+                    color: "bg-purple-500"
+                },
+                {
+                    id: 5,
+                    title: "تسليم المشروع 📋",
+                    date: "2025-10-10",
+                    time: "23:59",
+                    color: "bg-orange-500"
+                }
+            ]);
+
+            const [timers, setTimers] = useState([]);
+            const [showAddForm, setShowAddForm] = useState(false);
+            const [showTimerForm, setShowTimerForm] = useState(false);
+            const [activeTab, setActiveTab] = useState('countdowns');
+            
+            const [newCountdown, setNewCountdown] = useState({
+                title: "",
+                date: "",
+                time: "",
+                color: "bg-blue-500"
+            });
+
+            const [newTimer, setNewTimer] = useState({
+                title: "",
+                minutes: 0,
+                seconds: 0
+            });
+
+            const colors = [
+                "bg-blue-500", "bg-green-500", "bg-red-500", "bg-yellow-500",
+                "bg-purple-500", "bg-pink-500", "bg-indigo-500", "bg-teal-500"
+            ];
+
+            // حساب الوقت المتبقي للعدّادات
+            const calculateTimeLeft = (targetDate, targetTime) => {
+                const now = new Date();
+                const target = new Date(`${targetDate}T${targetTime}`);
+                const difference = target - now;
+
+                if (difference > 0) {
+                    const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+                    const minutes = Math.floor((difference / 1000 / 60) % 60);
+                    const seconds = Math.floor((difference / 1000) % 60);
+
+                    return { days, hours, minutes, seconds, isExpired: false };
+                }
+
+                return { days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true };
+            };
+
+            // إضافة عدّاد جديد
+            const addCountdown = () => {
+                if (newCountdown.title && newCountdown.date && newCountdown.time) {
+                    const newId = Math.max(...countdowns.map(c => c.id), 0) + 1;
+                    setCountdowns([...countdowns, {
+                        ...newCountdown,
+                        id: newId
+                    }]);
+                    setNewCountdown({ title: "", date: "", time: "", color: "bg-blue-500" });
+                    setShowAddForm(false);
+                }
+            };
+
+            // حذف عدّاد
+            const deleteCountdown = (id) => {
+                setCountdowns(countdowns.filter(c => c.id !== id));
+            };
+
+            // إضافة موقت جديد
+            const addTimer = () => {
+                if (newTimer.title && (newTimer.minutes > 0 || newTimer.seconds > 0)) {
+                    const totalSeconds = (newTimer.minutes * 60) + newTimer.seconds;
+                    const newId = Math.max(...timers.map(t => t.id), 0) + 1;
+                    
+                    setTimers([...timers, {
+                        id: newId,
+                        title: newTimer.title,
+                        totalSeconds,
+                        remainingSeconds: totalSeconds,
+                        isRunning: false,
+                        isCompleted: false
+                    }]);
+                    
+                    setNewTimer({ title: "", minutes: 0, seconds: 0 });
+                    setShowTimerForm(false);
+                }
+            };
+
+            // تشغيل/إيقاف الموقت
+            const toggleTimer = (id) => {
+                setTimers(timers.map(timer => 
+                    timer.id === id 
+                        ? { ...timer, isRunning: !timer.isRunning }
+                        : timer
+                ));
+            };
+
+            // إعادة تعيين الموقت
+            const resetTimer = (id) => {
+                setTimers(timers.map(timer => 
+                    timer.id === id 
+                        ? { ...timer, remainingSeconds: timer.totalSeconds, isRunning: false, isCompleted: false }
+                        : timer
+                ));
+            };
+
+            // حذف موقت
+            const deleteTimer = (id) => {
+                setTimers(timers.filter(t => t.id !== id));
+            };
+
+            // تشغيل الموقتات
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setTimers(prevTimers => 
+                        prevTimers.map(timer => {
+                            if (timer.isRunning && timer.remainingSeconds > 0) {
+                                const newRemaining = timer.remainingSeconds - 1;
+                                return {
+                                    ...timer,
+                                    remainingSeconds: newRemaining,
+                                    isCompleted: newRemaining === 0,
+                                    isRunning: newRemaining > 0
+                                };
+                            }
+                            return timer;
+                        })
+                    );
+                }, 1000);
+
+                return () => clearInterval(interval);
+            }, []);
+
+            const formatTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-100" dir="rtl">
+                    {/* Header */}
+                    <div className="bg-white shadow-sm p-4">
+                        <h1 className="text-3xl font-bold text-gray-800 text-center mb-2">⏰ العدّاد التنازلي</h1>
+                        <p className="text-gray-600 text-center text-sm">تابع أهم أحداثك ومواعيدك</p>
+                        
+                        {/* Tabs */}
+                        <div className="flex mt-4 bg-gray-100 rounded-lg p-1">
+                            <button
+                                onClick={() => setActiveTab('countdowns')}
+                                className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                                    activeTab === 'countdowns' 
+                                        ? 'bg-white text-blue-600 shadow-sm' 
+                                        : 'text-gray-600'
+                                }`}
+                            >
+                                <CalendarIcon />
+                                                                            <span className="mr-2">المواعيد</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('timers')}
+                                className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                                    activeTab === 'timers' 
+                                        ? 'bg-white text-blue-600 shadow-sm' 
+                                        : 'text-gray-600'
+                                }`}
+                            >
+                                <TimerIcon />
+                                <span className="mr-2">الموقتات</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="p-4">
+                        {/* Countdowns Tab */}
+                        {activeTab === 'countdowns' && (
+                            <>
+                                <div className="space-y-4">
+                                    {countdowns.map(countdown => {
+                                        const timeLeft = calculateTimeLeft(countdown.date, countdown.time);
+                                        return (
+                                            <div key={countdown.id} className={`${countdown.color} rounded-xl p-4 text-white relative`}>
+                                                <button
+                                                    onClick={() => deleteCountdown(countdown.id)}
+                                                    className="absolute top-2 left-2 bg-white/20 rounded-full p-1 hover:bg-white/30"
+                                                >
+                                                    <XIcon />
+                                                </button>
+                                                
+                                                <h3 className="font-bold text-lg mb-2">{countdown.title}</h3>
+                                                <p className="text-sm opacity-90 mb-3">
+                                                    {countdown.date} في {countdown.time}
+                                                </p>
+                                                
+                                                {!timeLeft.isExpired ? (
+                                                    <div className="grid grid-cols-4 gap-2 text-center">
+                                                        <div>
+                                                            <div className="text-2xl font-bold">{timeLeft.days}</div>
+                                                            <div className="text-xs">يوم</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-2xl font-bold">{timeLeft.hours}</div>
+                                                            <div className="text-xs">ساعة</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-2xl font-bold">{timeLeft.minutes}</div>
+                                                            <div className="text-xs">دقيقة</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-2xl font-bold">{timeLeft.seconds}</div>
+                                                            <div className="text-xs">ثانية</div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-center py-4">
+                                                        <div className="text-xl font-bold">انتهى الوقت!</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <button
+                                    onClick={() => setShowAddForm(true)}
+                                    className="w-full mt-6 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-4 flex items-center justify-center hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg"
+                                >
+                                    <PlusIcon />
+                                    <span className="mr-2">✨ إضافة حدث جديد</span>
+                                </button>
+                            </>
+                        )}
+
+                        {/* Timers Tab */}
+                        {activeTab === 'timers' && (
+                            <>
+                                <div className="space-y-4">
+                                    {timers.map(timer => (
+                                        <div key={timer.id} className={`bg-white rounded-xl p-4 shadow-sm border-l-4 ${
+                                            timer.isCompleted ? 'border-green-500' : 
+                                            timer.isRunning ? 'border-blue-500' : 'border-gray-300'
+                                        }`}>
+                                            <div className="flex justify-between items-start mb-3">
+                                                <h3 className="font-bold text-lg text-gray-800">{timer.title}</h3>
+                                                <button
+                                                    onClick={() => deleteTimer(timer.id)}
+                                                    className="text-gray-400 hover:text-red-500"
+                                                >
+                                                    <XIcon />
+                                                </button>
+                                            </div>
+                                            
+                                            <div className="text-center mb-4">
+                                                <div className={`text-4xl font-mono font-bold ${
+                                                    timer.isCompleted ? 'text-green-500' : 
+                                                    timer.isRunning ? 'text-blue-500' : 'text-gray-600'
+                                                }`}>
+                                                    {formatTime(timer.remainingSeconds)}
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => toggleTimer(timer.id)}
+                                                    disabled={timer.isCompleted}
+                                                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                                                        timer.isRunning 
+                                                            ? 'bg-red-500 text-white hover:bg-red-600' 
+                                                            : 'bg-blue-500 text-white hover:bg-blue-600'
+                                                    } disabled:bg-gray-300 disabled:cursor-not-allowed`}
+                                                >
+                                                    {timer.isRunning ? 'إيقاف' : 'تشغيل'}
+                                                </button>
+                                                <button
+                                                    onClick={() => resetTimer(timer.id)}
+                                                    className="flex-1 py-2 px-4 rounded-lg font-medium bg-gray-500 text-white hover:bg-gray-600 transition-colors"
+                                                >
+                                                    إعادة تعيين
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <button
+                                    onClick={() => setShowTimerForm(true)}
+                                    className="w-full mt-6 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-xl p-4 flex items-center justify-center hover:from-green-600 hover:to-teal-700 transition-all transform hover:scale-105 shadow-lg"
+                                >
+                                    <PlusIcon />
+                                    <span className="mr-2">⏲️ إضافة موقت جديد</span>
+                                </button>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Add Countdown Modal */}
+                    {showAddForm && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+                                <h2 className="text-xl font-bold mb-4 text-gray-800">📅 إضافة حدث جديد</h2>
+                                
+                                <div className="space-y-4">
+                                    <input
+                                        type="text"
+                                        placeholder="اسم الحدث (مثل: عيد ميلادي 🎂)"
+                                        value={newCountdown.title}
+                                        onChange={(e) => setNewCountdown({...newCountdown, title: e.target.value})}
+                                        c
